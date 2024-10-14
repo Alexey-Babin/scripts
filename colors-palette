@@ -1,0 +1,108 @@
+#!/bin/bash
+#
+
+usage() {
+  cat <<EOF
+Show terminal's color palettes
+
+Usage: 
+  $_0 [options]
+
+Options:
+  256       Show 256 color palette (Default)
+  16        Show 16 color palette
+   a,ansi   Show 16 color palette as ANSI colors
+   c,cube   Show 256 color palette as color cubes
+   g,grey   Show grayscale
+     all    Show all the above
+  -h,--help Show this help
+EOF
+exit 1
+}
+
+function ansi {
+  for ns in 30,38 40,48 90,98 100,108; do
+    for (( i="${ns%,*}" ; i<"${ns#*,}" ; i++ )) do
+      printf "\033[${i}m %03d \033[m" "$i"
+    done
+    echo
+  done
+  printf "\033[m"
+}
+
+function colors16 {
+  for (( i=0 ; i<16 ; i++ )) do
+    printf "\033[48;5;${i}m %03d " "$i" 
+    [[ "$(( (i+1) % 8 ))" -eq 0 ]] && printf "\033[m\n"
+  done
+}
+
+function colors256 {
+  for (( i=0 ; i <256 ; i++ )) do
+    printf "\033[48;5;${i};97m %03d \033[;38;5;${i}m %03d " "$i" "$i"
+    
+    [[ "$i" -lt 16 && "$((( i + 1 ) % 8))" -eq 0 ]] && echo
+    [[ "$i" -ge 16 && "$((( i - 15 ) % 6))" -eq 0 ]] && echo
+    [[ "$i" -eq 256 ]] && printf "\033[m"
+  done
+}
+
+function colorcube {
+  for (( r=0; r<6; r++ )) do
+    for (( g=0; g<6; g++ )) do
+      for (( b=0; b<6; b++ )) do
+        c=$((16 + (r * 6) + (g * 36) + b))
+        printf "\033[48;5;%sm  " "$c"
+      done
+      printf "\033[m "
+    done
+    echo
+  done
+}
+
+function grayscale {
+  for (( i=232; i<257; i++ )) do
+    # shellcheck disable=SC2059
+    printf "\033[48;5;${i}m   "
+  done
+  printf "\033[m\n"
+}
+
+case $# in
+  (0) colors256; return $? ;;
+esac
+
+while
+  case $1 in
+    (""|256|-256|--256) colors256 ;;
+    (16|-16|--16)       colors16 ;;
+    (a|-a|--ansi|ansi)  ansi ;;
+    (c|-c|--cube|cube)  cube ;;
+    (g|-g|--gr[ae]y|gr[ae]y)    grayscale ;;
+    (all) 
+      ansi
+      echo "------------------------------------"
+      colors16
+      echo "------------------------------------"
+      colors256
+      echo "------------------------------------"
+      cube
+      echo "------------------------------------"
+      grayscale
+    ;;
+    (-h|--help)
+      _0=${0##*/} usage
+    ;;
+    (-?*) >&2 printf 'unexpected option "%s"\n' "$1"
+			exit 22
+		;;
+	(*) break; exit 22
+  esac
+do
+  shift
+  case $# in
+    (0) break
+  esac
+done
+
+

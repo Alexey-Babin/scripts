@@ -1,0 +1,17 @@
+#!/bin/sh
+# Показывает бинарник как 0 и 1 (зачем?)
+
+case "$1" in
+  (-c|--color) COLOR=1; shift
+esac
+
+bits=$(xxd -b -c1 "$1" | cut -d" " -f2 | tr -d "\n")
+
+if [ "$COLOR" ]; then
+  esc=$(printf '\033')
+  echo "$bits" | sed "s/1/${esc}[32m&${esc}[0/g;s/0/${esc}[31m&${esc}[0/g"
+else
+  printf "%s\n" "$bits"
+fi
+
+
