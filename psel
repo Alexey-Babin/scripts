@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Выбор процесса(ов) через fzf с предпросмотром
+
+case "$1" in
+  (-c=* | --columns=*)
+    pscols="${1#*=}"
+    shift
+esac
+
+: "${pscols:="user,stat,pcpu,pmem,comm,cmd"}"
+pscols="pid,$pscols"
+
+processor=$(
+  FZF_DEFAULT_COMMAND="ps -e -o ${pscols} ${*}" 
+  fzf \
+   -m --header-lines 1 \
+    --height=$(( $(tput lines) - 1 )) \
+    --preview 'ps --forest -o pid=,cmd= -g "$(ps -o sid:1= -p {+1})" || pstree {+1} || echo {+1}' \
+    --preview-window='down,30%,border-horizontal,nohidden,nowrap' \
+    --bind 'ctrl-s:toggle-sort' \
+    --bind "ctrl-r:reload($FZF_DEFAULT_COMMAND)" \
+    --prompt 'Process:'
+  ) || exit 3
+
+if [ "$processor" ]; then
+  awk '{print $1}' <<-EOF
+  $processor
+EOF
+else
+  >&2 printf -- '%s: No process selected\n' "${0##*/}"
+  exit 2
+fi
+
