@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Поиск пакета через fzf
+
+query="${1:-.*}"
+
+opener="sudo apt install {+1}"
+apt-cache search --names-only "$query" | \
+  fzf --disabled --ansi --multi \
+  --bind 'change:reload-sync:sleep 1; apt-cache search --names-only {q}' \
+  --bind "enter:become:$opener" \
+  --preview 'apt-cache show {1}'\
+  --query "$query"
+
+
