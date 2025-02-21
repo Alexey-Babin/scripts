@@ -75,13 +75,13 @@ if [[ "$3" =~ ^[0-9]+$ ]]; then
   h="$3"
 fi
 
-if command -v mimetype > /dev/null ; then
-  mime_type=$(mimetype -b "$file")
+if command -v xdg-mime > /dev/null ; then
+  mime_type=$(xdg-mime query filetype "$file")
 else
   mime_type="$(file --dereference -b --mime-type -- "$file")"
 fi
 
-# echo "MIME: $mime_type"
+echo "MIME: $mime_type"
 case "$mime_type" in
   "image/"*)
     image 
@@ -109,7 +109,9 @@ case "$mime_type" in
     catdoc -- "$file"
     ;;
   ##########################################################################
-   "text/"* | *"/xml" | "application/javascript" | "application/x-subrip")
+   "text/"* | *"/xml" | "application/javascript" |  \
+   "application/x-subrip" | "application/x-desktop" | \
+   "application/x-shellscript" )
     if [ "${file##*.}" = "tsv" ] ; then
       pspg --ni "$file"
     else
