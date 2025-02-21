@@ -1,0 +1,182 @@
+#!/bin/bash
+
+# File preview handler for lf
+# Dependencies^
+# - GNU 'file' file detector
+# - batcat (text)
+# - chafa (images)
+# - exiftool (metadata)
+# - jq (json)
+# - lynx (html)
+#
+#
+if [[ -$# -eq 0 ]] ; then
+  echo "This script should be run with args: filename to preview"
+  exit 1
+fi
+
+# -C prevents output redirection using '>', '>&' from overwriting existiong files
+# -f disables filename expansion (globbing)
+set -C -f
+
+IFS='
+'
+
+### Functions ###
+### TEXT ###
+function text {
+  if command -v batcat > /dev/null ; then
+    batcat --style="${BAT_STYLE:-numbers}" --line-range=:300 --terminal-width="$term_width" --pager=never --color=always --highlight-line="${center:-0}" -- "$file"
+  elif command -v bat > /dev/null ; then
+    bat --style="${BAT_STYLE:-numbers}" --line-range=:300 --terminal-width="$term_width" --pager=never --color=always --highlight-line="${center:-0}" -- "$file"
+  else
+    head -n 300 "$file"
+  fi
+  }
+
+### IMAGE ###
+function image {
+  if [ -n "$TMUX" ]; then
+   chafa -s "${w}x${h}" -f symbols --passthrough tmux -- "$file"
+  else
+    chafa -s "${w}x${h}" -f sixel --animate off --polite on -- "$file"
+  fi
+}
+### End functions ###
+
+
+file=${1/#\~\//$HOME/}
+center=0
+
+if [[ ! -r "$file" ]]; then
+  if [[ "$file" =~ ^(.+):([0-9]+)\ *$ ]] && [[ -r ${BASH_REMATCH[1]} ]]; then
+    file=${BASH_REMATCH[1]}
+    center=${BASH_REMATCH[2]}
+  elif [[ "$file" =~ ^(.+):([0-9]):[0-9]+\ *$ ]] && [[ -r ${BASH_REMATCH[1]} ]]; then
+    file=${BASH_REMATCH[1]}
+    center=${BASH_REMATCH[2]}
+  else
+    echo "Could not open file ${file}"
+    exit 1
+  fi
+fi
+
+# Sizes:
+w=${FZF_PREVIEW_COLUMNS:-$(tput cols)}
+term_width=$w
+h=${FZF_PREVIEW_LINES:-$(tput lines)}
+
+if [[ "$2" =~ ^[0-9]+$ ]]; then
+  w=$(( "$2" - 2 ))
+  term_width=$(( "$2" - 4 )) # Correction for bat line numbers
+fi
+
+if [[ "$3" =~ ^[0-9]+$ ]]; then
+  h="$3"
+fi
+
+if command -v mimetype > /dev/null ; then
+  mime_type=$(mimetype -b "$file")
+else
+  mime_type="$(file --dereference -b --mime-type -- "$file")"
+fi
+
+# echo "MIME: $mime_type"
+case "$mime_type" in
+  "image/"*)
+    image 
+    ;;
+  ##########################################################################
+  "text/html")
+    elinks -dump-width "$w" -dump-charset utf-8 -dump-color-mode 3 -dump "$file"
+    ;;
+  ##########################################################################
+  "text/troff")
+    case "${file##*.}" in
+      ([0-9] | [01]p | [23]*)
+        man ./ "$file" | col -b
+        ;;
+      (*)
+        text
+    esac
+    ;;
+  ##########################################################################
+  "text/csv")
+    pspg --ni "$file"
+    ;;
+  ##########################################################################
+  "ext/rtf" | *"msword" )
+    catdoc -- "$file"
+    ;;
+  ##########################################################################
+   "text/"* | *"/xml" | "application/javascript" | "application/x-subrip")
+    if [ "${file##*.}" = "tsv" ] ; then
+      pspg --ni "$file"
+    else
+      text
+    fi
+    ;;
+  ##########################################################################
+  "application/x-pie-executable" | "application/x-executable" | "application/x-sharedlib")
+    objdump -d "$file" -M intel
+    ;;
+  ##########################################################################
+  "application/json")
+    jq -C < "$file"
+    ;;
+  ##########################################################################
+  "application/zip" | "application/x-7z-compressed")
+    atool --list -- "$file"
+    ;;
+  ##########################################################################
+  "application/x-tar")
+    file -b "$file"
+    echo
+    tar -tf "$file"
+    ;;
+  ##########################################################################
+  "audio/"* | "video/"*)
+    exiftool -j "$file" | jq -C
+    ;;
+  ##########################################################################
+  *"/pdf" | *"/postscript")
+    pdftotext "$file"
+    ;;
+  ##########################################################################
+  *"opendocument"*)
+    bytes="$(du -sb "$file" | cut -f 1)"
+    if [ "$bytes" -lt 150000 ]; then
+      odt2txt "$1"
+    else
+      printf "File is too big to preview\n\n"
+      exiftool -j "$file" | jq -C
+    fi
+    ;;
+  ##########################################################################
+  "application/pgp-encrypted")
+      printf "PGP armored ASCII \033[1;31mencrypted\033[m file,\ntry using gpg to decrypt it\n\n"
+      cat "$file"
+      #gpg -d -- "$1"
+  ;;
+  ##########################################################################
+  "application/octet-stream")
+      #extension="${1##*.}" extension="${extension%"$1"}"
+      case "${1##*.}" in
+      (gpg)
+          printf "OpenPGP \033[1;31mencrypted\033[m file,\ntry using gpg to decrypt it\n\n"
+      ;;
+      (*) 
+        file -b --dereference "$file" | tr "," "\n"
+        # exiftool -j "$1" | jq -C
+      esac
+  ;;
+  ##########################################################################
+  "inode/directory")
+      lsd --tree --icon=auto --depth=3 "$1"
+      ;;
+  ##########################################################################
+  *)
+    file -b --dereference "$1" | tr "," "\n"
+  ##########################################################################
+  esac
+
