@@ -25,18 +25,26 @@ IFS='
 ### Functions ###
 ### TEXT ###
 function text {
+  local batparams=("--style=${BAT_STYLE:-numbers}")
+  batparams+=("--color=always")
+  batparams+=("--highlight-line=${center:-0}")
+  if [[ "$env" != "standalone" ]] ; then
+    batparams+=("--line-range=:$h")
+    batparams+=("--terminal-width=$term_width")
+    batparams+=("--pager=never")
+  fi
   if command -v batcat > /dev/null ; then
-    batcat --style="${BAT_STYLE:-numbers}" --line-range=:300 --terminal-width="$term_width" --pager=never --color=always --highlight-line="${center:-0}" -- "$file"
+    batcat "${batparams[@]}" -- "$file"
   elif command -v bat > /dev/null ; then
-    bat --style="${BAT_STYLE:-numbers}" --line-range=:300 --terminal-width="$term_width" --pager=never --color=always --highlight-line="${center:-0}" -- "$file"
+    bat "${batparams[@]}" -- "$file"
   else
-    head -n 300 "$file"
+    head -n "$h" "$file"
   fi
   }
 
 ### IMAGE ###
 function image {
-  if [ -n "$TMUX" ]; then
+  if [ -n "$TMUX" ] || [[ "$env" = "lf" ]]; then
    chafa -s "${w}x${h}" -f symbols --passthrough tmux -- "$file"
   else
     chafa -s "${w}x${h}" -f sixel --animate off --polite on -- "$file"
@@ -81,6 +89,16 @@ else
   mime_type="$(file --dereference -b --mime-type -- "$file")"
 fi
 
+
+# Environment
+if [[ -n ${FZF_PREVIEW_COLUMNS+x} ]] ; then
+  env=fzf
+elif [[ "$2" =~ ^[0-9]+$ ]] ; then
+  env=lf
+else
+  env=standalone
+fi
+
 echo "MIME: $mime_type"
 case "$mime_type" in
   "image/"*)
@@ -111,6 +129,7 @@ case "$mime_type" in
   ##########################################################################
    "text/"* | *"/xml" | "application/javascript" |  \
    "application/x-subrip" | "application/x-desktop" | \
+   "application/yaml" | \
    "application/x-shellscript" )
     if [ "${file##*.}" = "tsv" ] ; then
       pspg --ni "$file"
@@ -122,7 +141,23 @@ case "$mime_type" in
   "application/x-pie-executable" | "application/x-executable" | "application/x-sharedlib")
     objdump -d "$file" -M intel
     ;;
-  ##########################################################################
+  ###########################################################################
+  "application/x-rpm" )
+    if command -v rpm >/dev/null ; then
+      rpm -q -i -p "$file"
+      echo
+      echo "*** Contents:"
+      rpm -q -l -p "$file"
+    fi
+    ;;
+   #########################################################################
+  "application/x-debian-package" | "application/vnd.debian.binary-package" | \
+  "application/vnd.shana.informed.package" )
+    dpkg --info "$file"
+    echo
+    echo "*** Contents:"; dpkg-deb --contents "$file"
+    ;;
+   ##########################################################################
   "application/json")
     jq -C < "$file"
     ;;
