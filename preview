@@ -109,7 +109,7 @@ case "$mime_type" in
     elinks -dump-width "$w" -dump-charset utf-8 -dump-color-mode 3 -dump "$file"
     ;;
   ##########################################################################
-  "text/troff")
+  "text/troff" | "application/x-troff-man" )
     case "${file##*.}" in
       ([0-9] | [01]p | [23]*)
         man ./ "$file" | col -b
@@ -162,8 +162,9 @@ case "$mime_type" in
     jq -C < "$file"
     ;;
   ##########################################################################
-  "application/zip" | "application/x-7z-compressed")
-    atool --list -- "$file"
+  "application/"*"zip" | "application/x-7z-compressed" | "application/"*"compressed"* | \
+  "application/"*"rar")
+    ouch list --tree --gitignore -- "$file"
     ;;
   ##########################################################################
   "application/x-tar")
