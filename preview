@@ -99,7 +99,7 @@ else
   env=standalone
 fi
 
-echo "MIME: $mime_type"
+echo -e "MIME: $mime_type\n"
 case "$mime_type" in
   "image/"*)
     image 
@@ -210,7 +210,7 @@ case "$mime_type" in
   ;;
   ##########################################################################
   "inode/directory")
-      lsd --tree --icon=auto --depth=3 "$1"
+      lsd --tree --icon=always --color=always --depth=3 "$1"
       ;;
   ##########################################################################
   *)
