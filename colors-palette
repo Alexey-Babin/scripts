@@ -5,19 +5,19 @@ usage() {
   cat <<EOF
 Show terminal's color palettes
 
-Usage: 
+Usage:
   $_0 [options]
 
 Options:
   256       Show 256 color palette (Default)
   16        Show 16 color palette
-   a,ansi   Show 16 color palette as ANSI colors
-   c,cube   Show 256 color palette as color cubes
-   g,grey   Show grayscale
+  a,ansi    Show 16 color palette as ANSI colors
+  c,cube    Show 256 color palette as color cubes
+  g,grey    Show grayscale
      all    Show all the above
   -h,--help Show this help
 EOF
-exit 1
+  exit 1
 }
 
 function ansi {
@@ -32,7 +32,7 @@ function ansi {
 
 function colors16 {
   for (( i=0 ; i<16 ; i++ )) do
-    printf "\033[48;5;${i}m %03d " "$i" 
+    printf "\033[48;5;${i}m %03d " "$i"
     [[ "$(( (i+1) % 8 ))" -eq 0 ]] && printf "\033[m\n"
   done
 }
@@ -69,35 +69,35 @@ function grayscale {
 }
 
 case $# in
-  (0) colors256; return $? ;;
+(0) colors256; return $? ;;
 esac
 
 while
-  case $1 in
-    (""|256|-256|--256) colors256 ;;
-    (16|-16|--16)       colors16 ;;
-    (a|-a|--ansi|ansi)  ansi ;;
-    (c|-c|--cube|cube)  cube ;;
-    (g|-g|--gr[ae]y|gr[ae]y)    grayscale ;;
-    (all) 
-      ansi
-      echo "------------------------------------"
-      colors16
-      echo "------------------------------------"
-      colors256
-      echo "------------------------------------"
-      cube
-      echo "------------------------------------"
-      grayscale
-    ;;
-    (-h|--help)
-      _0=${0##*/} usage
-    ;;
-    (-?*) >&2 printf 'unexpected option "%s"\n' "$1"
-			exit 22
-		;;
-	(*) break; exit 22
-  esac
+case $1 in
+(""|256|-256|--256) colors256 ;;
+(16|-16|--16)       colors16 ;;
+(a|-a|--ansi|ansi)  ansi ;;
+(c|-c|--cube|cube)  cube ;;
+(g|-g|--gr[ae]y|gr[ae]y)    grayscale ;;
+(all)
+ansi
+echo "------------------------------------"
+colors16
+echo "------------------------------------"
+colors256
+echo "------------------------------------"
+cube
+echo "------------------------------------"
+grayscale
+;;
+(-h|--help)
+_0=${0##*/} usage
+;;
+(-?*) >&2 printf 'unexpected option "%s"\n' "$1"
+exit 22
+;;
+(*) break; exit 22
+esac
 do
   shift
   case $# in

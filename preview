@@ -129,8 +129,8 @@ case "$mime_type" in
   ##########################################################################
    "text/"* | *"/xml" | "application/javascript" |  \
    "application/x-subrip" | "application/x-desktop" | \
-   "application/yaml" | \
-   "application/x-shellscript" )
+   "application/yaml" | "application/x-powershell" | \
+   "application/x-shellscript" | "application/x-fishscript" )
     if [ "${file##*.}" = "tsv" ] ; then
       pspg --ni "$file"
     else
